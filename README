@@ -1,0 +1,21 @@
+My first github project.  Begun 1/9/2010
+This Project impliments a 32Bit video game on 2 chips.  the ATUC32B0256 CPU 
+and the aD738 Video Generator Chip.
+
+Software does all the timing for video generation.  so Most of the CPu power (60 Mips)
+Is used to send pixels to the screen.  You get 1-2 mips of leftover cpu power during
+the vertical blanking interval to run your game.  The concept is very similar to the 
+UZEBOX  that uses the ATmel AVR 644.  Thanks for the inspiration!!
+
+Status 1/9/2010
+This generates 320X240 Video using 8*8 tiles.  The tile memory is in RAM for SPeed of
+access.  I currently have video timig working but it needs more cycle counting.  There
+is A PCB Layout available.  I'll add a picture of the board and a schematic later on.
+Perhaps a couple of screenshots.  Not games yet.  I'm looking for game code volunteers!!
+The code is messy since this is my first AVR32 project.  I'm getting the hang of the
+atmel toolchain.  I need to add more comments and design info.  Perhaps a web page 
+as well.
+
+
+
+ 
