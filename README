@@ -1,5 +1,5 @@
 My first open source github project.  Begun 1/9/2010
-This Project impliments a 32Bit video game on 2 chips.  the ATUC32B0256 CPU 
+This Project impliments a 32Bit video game on 2 chips.  the ATUC32B0256 AVR32 CPU 
 and the aD738 Video Generator Chip. It can generate 320X240 video with 8*8 based tiles.
 The discrete dac has 4 bits for each of R,G,B for 12 bits or 4096 possible colors.
 The simple resistor DAC will probably limit this somewhat.
