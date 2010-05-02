@@ -46,7 +46,7 @@
     <file path="src/SOFTWARE_FRAMEWORK/DRIVERS/FLASHC/flashc.c" framework="com.atmel.avr32.sf.uc3b" version="1.4.0" source="DRIVERS/FLASHC/flashc.c" changed="false"/>
     <file path="src/SOFTWARE_FRAMEWORK/UTILS/LIBS/NEWLIB_ADDONS/INCLUDE/nlao_interrupts.h" framework="com.atmel.avr32.sf.uc3b" version="1.4.0" source="UTILS/LIBS/NEWLIB_ADDONS/INCLUDE/nlao_interrupts.h" changed="true"/>
     <file path="src/SOFTWARE_FRAMEWORK/DRIVERS/PM/pm.c" framework="com.atmel.avr32.sf.uc3b" version="1.4.0" source="DRIVERS/PM/pm.c" changed="false"/>
-    <file path="src/SOFTWARE_FRAMEWORK/DRIVERS/INTC/exception.x" framework="com.atmel.avr32.sf.uc3b" version="1.4.0" source="DRIVERS/INTC/exception.S" changed="true"/>
+    <file path="src/SOFTWARE_FRAMEWORK/DRIVERS/INTC/exception.x" framework="com.atmel.avr32.sf.uc3b" version="1.4.0" source="DRIVERS/INTC/exception.S" changed="false"/>
     <file path="src/SOFTWARE_FRAMEWORK/DRIVERS/INTC/intc.c" framework="com.atmel.avr32.sf.uc3b" version="1.4.0" source="DRIVERS/INTC/intc.c" changed="false"/>
     <file path="src/SOFTWARE_FRAMEWORK/DRIVERS/INTC/intc.h" framework="com.atmel.avr32.sf.uc3b" version="1.4.0" source="DRIVERS/INTC/intc.h" changed="false"/>
     <file path="src/SOFTWARE_FRAMEWORK/BOARDS/EVK1101/evk1101.h" framework="com.atmel.avr32.sf.uc3b" version="1.4.0" source="BOARDS/EVK1101/evk1101.h" changed="false"/>

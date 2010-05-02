@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>video_test4</name>
+	<name>vid32</name>
 	<comment></comment>
 	<projects>
 	</projects>
@@ -27,7 +27,7 @@
 				</dictionary>
 				<dictionary>
 					<key>org.eclipse.cdt.make.core.buildLocation</key>
-					<value>${workspace_loc:/_template/Debug}</value>
+					<value>${workspace_loc:/vid32/Debug}</value>
 				</dictionary>
 				<dictionary>
 					<key>org.eclipse.cdt.make.core.contents</key>

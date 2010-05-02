@@ -190,35 +190,7 @@ _handle_Supervisor_Call:
 
   .balign 4
 
-
-_int0:
-#if __AVR32_UC__
-  // R8-R12, LR, PC and SR are automatically pushed onto the system stack by the
-  // CPU upon interrupt entry. No other register is saved by hardware.
-#elif __AVR32_AP__
-  // PC and SR are automatically saved in respectively RAR_INTx and RSR_INTx by
-  // the CPU upon interrupt entry. No other register is saved by hardware.
-  pushm   r8-r12, lr
-#endif
-  mov     r12, LO(tc2_irq)  // Pass the int_lev parameter to the _get_interrupt_handler function.
-  orh	  r12, HI(tc2_irq)
-  //call    _get_interrupt_handler
-  cp.w    r12, 0          // Get the pointer to the interrupt handler returned by the function.
-#if __AVR32_UC__
-  movne   pc, r12         // If this was not a spurious interrupt (R12 != NULL), jump to the handler.
-#elif __AVR32_AP__
-  breq    spint0  // If this was a spurious interrupt (R12 == NULL), branch.
-  st.w    --sp, r12       // Push the pointer to the interrupt handler onto the system stack since no register may be altered.
-  popm    r8-r12, lr, pc  // Restore registers and jump to the handler.
-spint0:
-  popm    r8-r12, lr
-#endif
-  rete                    // If this was a spurious interrupt (R12 == NULL), return from event handler.
-
-
-
-
-  .irp    priority, 1, 2, 3
+  .irp    priority, 0, 1, 2, 3
 _int\priority:
 #if __AVR32_UC__
   // R8-R12, LR, PC and SR are automatically pushed onto the system stack by the

@@ -1,3 +1,16 @@
+// Vid32 AVR32UC3B Video Game Source files
+// This file implements a video generator for simple video games of your childhood
+// most of the 60 Mips of awesome 32 bit CPu power is used to generate 320X240 pixel
+//  4 bit RGB (12 bit s total 4096 colors) of on-screen goodness.
+//
+//  Video generation is all interrupt driven so once you initialize it , the video
+// is generated and you get about 1-2 mips during the vertical blanking interval
+//  when there are no active pixel being drawn.
+
+// schematics of the design are valibale as well as PCBs and stuffed boards
+// contact davelandia@verizon.net for more info
+
+
 /* This source file is part of the ATMEL AVR32-SoftwareFramework-AT32UC3B-1.4.0 Release */
 
 /*This file has been prepared for Doxygen automatic documentation generation.*/
@@ -90,6 +103,12 @@
  * <A href="http://www.atmel.com/products/AVR32/">Atmel AVR32</A>.\n
  * Support and FAQ: http://support.atmel.no/
  */
+
+/*
+ * vid32 platform code.. David L Anderson Released under GNU Publice License
+ * Except for atmel parts ( they are noted above)
+ */
+
 
 
 #include "compiler.h"
