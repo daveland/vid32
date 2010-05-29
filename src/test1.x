@@ -138,10 +138,10 @@ _line_data:
 
 
 
-.rept 1*10  // delay line beginning
+.rept 30*10  // delay line beginning
         nop
 .endr
-         rcall send_video_line_indexed_wsprites:
+         rcall send_video_line_indexed_32bit
 
         // USE OFFSET to ACCESS Output Value register
         mov  r7, 0x0000
@@ -649,7 +649,7 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
                 // calculate r11 offset for this video line
 // active video starts on   line 16 end on line 240
 //  map 1200 tile locations in video memory to these video lines
-                sub     r8,16  // start on line 16 as active video line 0
+                sub     r8,15  // start on line 15 as active video line 0
                 mov     r6,r8  // copy r8 into temp r6
                 lsr     r8,3 // divide by 8 to get video memory row
                 mul     r8,r8,40  // multiply video memory row (r8) by 40 to get video memory index offset
@@ -776,7 +776,7 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
 	                // calculate r11 offset for this video line
 	// active video starts on   line 16 end on line 240
 	//  map 1200 tile locations in video memory to these video lines
-	                sub     r8,16  // start on line 16 as active video line 0
+	                sub     r8,15  // start on line 15 as active video line 0
 	                mov     r6,r8  // copy r8 into temp r6
 	                lsr     r8,3 // divide by 8 to get video memory row
 	                mul     r8,r8,40  // multiply video memory row (r8) by 40 to get video memory index offset
@@ -913,8 +913,6 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
 
 
 
-
-
 	        // video line number in R8
 	        // destroys r6,r10
 	        // inputs r12 =tile memory pointer ram,word wide-- modified
@@ -927,7 +925,7 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
 	                // calculate r11 offset for this video line
 	// active video starts on   line 16 end on line 240
 	//  map 1200 tile locations in video memory to these video lines
-	                sub     r8,16  // start on line 16 as active video line 0
+	                sub     r8,15  // start on line 15 as active video line 0
 	                mov     r6,r8  // copy r8 into temp r6
 	                lsr     r8,3 // divide by 8 to get video memory row
 	                mul     r8,r8,40  // multiply video memory row (r8) by 40 to get video memory index offset
@@ -939,7 +937,7 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
 	                andl     r6,0x07 // video line number..keep only lower 3 bits mask out others
 	                lsl     r6,4  // multiply by 16 ( 2 bytes *8 pixels rows)
 	                add     r12,r6  // this is the offset for r12
-	        .rept 37   // 40 tile loop , 1 video line , 1 row in pixelmap, 9 clocks per pixel
+	        .rept 35   // 40 tile loop , 1 video line , 1 row in pixelmap, 9 clocks per pixel
 	                ld.ub   r10,r11++[0]       //  get next  tile number from video memory,  2 cycles
 	                lsl     r10,7                   // tiles are 128 =8*8*2 bytes long,
 	                ld.w   r6,r12[R10] // localAccess get pixel word for 2tile pixels->   1 cycle + 1+1Wait =3 cycles
@@ -1025,7 +1023,7 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
 
 
 	        // USE OFFSET to ACCESS Output Value register
-	        mov  r6, 0x0FFF
+	        mov  r6, 0x0000
 	        orh      r6, 0x0000                                             // RGB=0,0,0
 	        st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R6
 

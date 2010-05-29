@@ -7,7 +7,7 @@
 // is generated and you get about 1-2 mips during the vertical blanking interval
 //  when there are no active pixel being drawn.
 
-// schematics of the design are valibale as well as PCBs and stuffed boards
+// schematics of the design are available as well as PCBs and stuffed boards
 // contact davelandia@verizon.net for more info
 
 
@@ -158,20 +158,45 @@ extern void _do_line_scan(void);
 #define FOSC1           14318181                              //!< Osc1 frequency: Hz.
 #define OSC1_STARTUP    AVR32_PM_OSCCTRL1_STARTUP_2048_RCOSC  //!< Osc1 startup time: RCOsc periods.
 
-// timer counter 1 runs doulble rate for vsync pulses
-//
+// timer counter 2 runs double rate for vsync pulses
+// timer counter 2 is used to generate Vsync timing.  this takes some of the cycle counting
+// accuracy off of the cpu since the time will change on exactly the correct count regardless of cpu loading
+//  Then we get an interrupt and can fix up the pointers to prepare for a vsync interval
+
+// Note that TC_A1_0_0 pin is pin 45(PA21) on AT32UC3B0256 QFP64.
 #  define VSYNC_TC_CHANNEL_ID         1
 #  define TCA1_TC_CHANNEL_PIN        AVR32_TC_A1_0_0_PIN
 #  define TCA1_TC_CHANNEL_FUNCTION   AVR32_TC_A1_0_0_FUNCTION
 
-/// values for TC2 RA and RB registers that set interupts for line timing
-#define CSYNC_HIGH_COUNT 129  //RA == 4.749us*57.2727200Mhz/2=136 pba clocks
-#define ACTIVE_VIDEO_COUNT 311 // RB=10.895us
-#define line_rate_count 1819 // RC
+/// values for TC1 chan 2 RA and RB registers that set interrupts for line timing
+// each video line is timed by the timer 2 RA and RB settings.  This allows for more accurate timing
+// since the timer will count exact clock cycles and will not have interrupt latency issues.
+// the IO pin to the AD723 chages state based on the timer Not on the software timeing.
+// pixel positions are still software timed, but the basic line and frame rates are EXACT based upon
+// timer counts.
+//
+// Note tha the time runs at 1/2 the cpu clock so all actual timer counts are 1/2 any cpu cycle counts
 
+// Define RA to count the horizontal sync high width of 4.749us
+// this will drop the hsync line when in should go low.
+#define CSYNC_HIGH_COUNT 136  //RA == 4.749us*57.2727200Mhz/2=136 pba clocks
+// Define RB to determine when the active video shoudl start after the Hsync pulse drops
+// This timeout will define the left hand position of the video on the screen.
+// less time here and the video moves over to the left
+#define ACTIVE_VIDEO_COUNT 311 // RB=10.895us
+
+// define the length of a horizontal video line.  The Hsync pulse will go back high here ( in hardware)
+// to insure that the  line is completed at exactly the correct time.  The CPU must have finished it's video line
+// and begun pre-calculating the next line.  Actually it must return 2-3us later so the next interrupt of RA can prep the next line.
+
+#define line_rate_count 1820 // RC
+
+// define Pins and functions for the CSYNC pin
 #  define CSYNC_TC_CHANNEL_ID         2
 #  define TCA2_TC_CHANNEL_PIN        AVR32_TC_A2_0_0_PIN
 #  define TCA2_TC_CHANNEL_FUNCTION   AVR32_TC_A2_0_0_FUNCTION
+
+
 // Note that TC_A2_0_0 pin is pin 30(PA11) on AT32UC3B0256 QFP64.
 #  define TCB2_TC_CHANNEL_PIN        AVR32_TC_B2_0_0_PIN
 #  define TCB2_TC_CHANNEL_FUNCTION   AVR32_TC_B2_0_0_FUNCTION
@@ -217,7 +242,7 @@ const  tc_waveform_opt_t tc2_settings=
       .acpa = TC_EVT_EFFECT_SET,
 
       .wavsel =TC_WAVEFORM_SEL_UP_MODE_RC_TRIGGER ,
-      .enetrg = FALSE,
+      .enetrg = FALSE,							// external trigger disabled  so Video runs at normal rate
       .eevt= TC_EXT_EVENT_SEL_XC2_OUTPUT,
       .eevtedg = TC_SEL_RISING_EDGE,
       .cpcdis = FALSE,
@@ -241,7 +266,7 @@ const  tc_waveform_opt_t tc2_settings_ext_trigger=
       .acpa = TC_EVT_EFFECT_SET,
 
       .wavsel =TC_WAVEFORM_SEL_UP_MODE_RC_TRIGGER ,
-      .enetrg = TRUE,
+      .enetrg = TRUE,						//  external trigger enabled  so video line is truncated by a Timer 1 event
       .eevt= TC_EXT_EVENT_SEL_XC2_OUTPUT,
       .eevtedg = TC_SEL_RISING_EDGE,
       .cpcdis = FALSE,
@@ -252,9 +277,17 @@ const  tc_waveform_opt_t tc2_settings_ext_trigger=
   };
 
 
-//  TC1 runs 1/2 a video line only during vsync lines
-// this resets the CSync line in TC2 and allows a second sync pulse in the center of the line
-// the TIOA1 output is used internally to trigger a reset of TC2 every 910 clocks
+//  TC1 runs 1/2 a video line only during vsync lines ( vertical blanking interval)
+//  We need to do some csync pules at twice the horizontal rate during the blanking, so this
+// timer mode is enabled during that time to get us CSYNC pulsing twice every horizontal line
+//
+// this T1 Event forces a reset on the CSync line  setup in TC2 above half way thru its cycle,
+// so T2 then restarts and runs again.. but since T2 was only 1/2 way thru it's cycle it now runs at twice the
+// effective horizontal rate while TC1 is activly bumping it.
+
+// This generates a second CSYNC pulse in the center of the video line during vertical interval lines.
+// note that the TIOA1 T1 output is used internally to trigger a reset of TC2 every 910 (PBA/2) timer clocks
+//// this is a loopback feedback of 2 timers to generate a complex pattern of CSYNC pulses
 
 const  tc_waveform_opt_t tc1_settings=
   {.channel = VSYNC_TC_CHANNEL_ID ,
@@ -280,7 +313,7 @@ const  tc_waveform_opt_t tc1_settings=
   };
 
 void fill_sprite_buffer();
-
+void init_color_bars();
 volatile U16 ctr_sprite=0;
 volatile U16 ctr_before =0;
 volatile U16 ctr_after =0;
@@ -301,8 +334,10 @@ extern __inline__ void gpio_local_enable_pin_interrupt(unsigned int pin)
 {
   AVR32_GPIO_LOCAL.port[pin >> 5].oders = 1 << (pin & 0x1F);
 }
-// timer counter 2 video interupt
-/// Video interupt
+// timer counter 2 TC2 video interrupt service routine.  This sets the video CSYNC timing to the AD723 video
+// generator IC,  The steam of video data is determined by the video rendering code called by this interupt.
+// the video active interrupt
+/// Video interrupt
 #if __GNUC__
 __attribute__((__interrupt__))
 #elif __ICCAVR32__
@@ -311,38 +346,69 @@ __interrupt
 #endif
 extern void tc2_irq(void)
 { int status;
-  // Increment the ms seconds counter
+  // Increment the timer interupt counter to keep track of which video line ( or effective line ) we are
+// on.   The video line number is needed to determine what video data will be rendered on this interupt.
   tc_tick++;
 
   // Clear the interrupt flag. This is a side effect of reading the TC SR.
  //status= tc_read_sr(&AVR32_TC, &AVR32_TC);
   // beware  ... hard coded channel number... make it a #define...
+  // see which TC2 event cause the interupt.
  status= AVR32_TC.channel[2].sr;
 
- if (active_lines)
- {
-   _do_line_scan(); // line 15 ( dummy ) to line 262
-   status= AVR32_TC.channel[2].sr;// clear int flag
+
+ if (active_lines) // active lines are places where video is actually rendered... lines 15 to 262
+ {  // render the active line here...  use the proper routine depending on video mode selected at compile
+	 // time.  not that this saves memory space and CPU cycles by selectively compiling in only one set
+	 // of video modes into any one program.
+	 if(status & 0x04)
+		 {	// _line_hsync();  set csync high  then run video line
+	                 //AVR32_GPIO_LOCAL.port[GPIO_PIN_CSYNC >> 5].ovrs= 1<< ( GPIO_PIN_CSYNC & 0x1F );
+					 //if (line_number ==15)
+	 	                  // active_lines=1;  // back to active lines
+	 					#ifdef VIDEOMODE1  // 240*240 32 sprites
+	 						 _line_data(); // line 15 ( dummy ) to line 255
+	 					#endif
+
+	 						 // note that the interupt flag might still be set from the current line... clear it befor we return
+	 						 status= AVR32_TC.channel[2].sr;// clear int flag
+		 }
+
+	 else if (status & 0x10)  // line is over.. clear csync
+	               { // _line_end();   //cleear csync      // inc line number here
+	                 AVR32_GPIO_LOCAL.port[GPIO_PIN_CSYNC >> 5].ovrc= 1<< ( GPIO_PIN_CSYNC & 0x1F );
+	                 line_number++;
+	                 if (line_number>256)// next  line is 257
+	                 	 	active_lines=0;
+	               }
  }
 
- else
+ else  // its not an active video frame so we just make sync pulse here..
+	    // This is currently software driven so the CSYNC and VSYNC edges are dependant on software execution time.
+	    //  When the CSYNC and VSYNC pins are from the timers then this timing will be guranteed by timer clock cycles.
+
+	   /// But for now...
+	   //  we just need to make sure that we transition in and out of vertical mode and double rate vertical mode
+	   // on the correct video line numbers.
    {
  switch (line_number){
 
-   case 1:   // normal vertical sync lines 1-9
+   case 1:   // normal VSYNC lines 1-9
    case 2:
    case 3:
    case 7:
    case 8:
-   case 9:
-     { if(status & 0x04)
+   case 9: // begin halfline mode.
+     { if(status & 0x04) /// timer event??? what
        //_line_vsync();
        // Set Csync high
          AVR32_GPIO_LOCAL.port[GPIO_PIN_CSYNC >> 5].ovrs= 1<< ( GPIO_PIN_CSYNC & 0x1F );
 
+       // scope trigger high here
+     AVR32_GPIO_LOCAL.port[GPIO_LED_VERT_TRIG >> 5].ovrs= 1<< ( GPIO_LED_VERT_TRIG & 0x1F );
 
-     if (status & 0x10)
-       { // toggel csync at half line
+     if (status & 0x10) //timer event ??? what
+       { // toggel csync at half the horizontal linecount
          AVR32_GPIO_LOCAL.port[GPIO_PIN_CSYNC >> 5].ovrt= 1<< ( GPIO_PIN_CSYNC & 0x1F );
 
         if (halfline)  // we are running interrupts at 2x the line rate during vsync
@@ -378,6 +444,7 @@ extern void tc2_irq(void)
 
       { if(status & 0x04)
         //_line_vsync_low();
+    	 // now csync is low pulsing high
       AVR32_GPIO_LOCAL.port[GPIO_PIN_CSYNC >> 5].ovrc= 1<< ( GPIO_PIN_CSYNC & 0x1F );
 
 
@@ -417,7 +484,11 @@ extern void tc2_irq(void)
                AVR32_GPIO_LOCAL.port[GPIO_PIN_CSYNC >> 5].ovrc= 1<< ( GPIO_PIN_CSYNC & 0x1F );
                line_number++;
                if (line_number ==15)
-                 active_lines=1;  // back to active lines
+                 { active_lines=1;  // back to active lines
+                 // scope trigger low here
+                   AVR32_GPIO_LOCAL.port[GPIO_LED_VERT_TRIG >> 5].ovrc= 1<< ( GPIO_LED_VERT_TRIG & 0x1F );
+
+                 }
              }
          break;
         }
@@ -436,10 +507,8 @@ extern void tc2_irq(void)
               {
                //  _line_end();   //cleear csync      // inc line number here
                 AVR32_GPIO_LOCAL.port[GPIO_PIN_CSYNC >> 5].ovrc= 1<< ( GPIO_PIN_CSYNC & 0x1F );
-                 line_number++;
-                if (line_number>262)
-                  {
-                    line_number=1;
+
+                 line_number=1;  // we are at the end of the frame  setup for line #1 and vertical sync
 
                    //line 1  change sync rate to 2X rate (i.e. 910)
                       //  it is turned back off at the end of line 9
@@ -447,9 +516,9 @@ extern void tc2_irq(void)
                     tc_write_rb(tc, CSYNC_TC_CHANNEL_ID, ACTIVE_VIDEO_COUNT);     // Set RB value. 290 counts  10.2us
                     tc_write_rc(tc, CSYNC_TC_CHANNEL_ID, line_rate_count/2);     // Set RC value. REset counter here  65.3535us
 
-                      tc_init_waveform(tc, & tc2_settings);
+                      //tc_init_waveform(tc, & tc2_settings);
                       // tc_init_waveform(tc, & tc2_settings_ext_trigger);
-                  }
+
                }
               break;
             }
@@ -493,41 +562,24 @@ static void tc1_irq(void)
      //line 9 turn off vsync tc2 external trigger
      //  it is turned back on at the end of line 262
 
-     tc_init_waveform(tc, & tc2_settings);
+    // tc_init_waveform(tc, & tc2_settings);
     // tc_init_waveform(tc, & tc2_settings_ext_trigger);
    }
 
 }
 
-#if __GNUC__
-__attribute__((__interrupt__))
-#elif __ICCAVR32__
-__interrupt
-#endif
-static void video_int_handler(void)
-{
-        int encoder_bits;
-
-        asm volatile("nop\n\t"
-                     "nop\n\t"
-                     "nop\n\t"
-                     "nop\n\t"
-                     ::);
-        // get the A and B chan values from local BUS port input register
-        //
-       // encoder_bits=AVR32_GPIO_LOCAL.port[GPIO_CHAN_A_LEFT >> 5].pvr ;
-
-
-
-//  clear interupt flag on chan A
-       // AVR32_GPIO.port[GPIO_CHAN_A_LEFT >> 5].ifrc= 1 << (GPIO_CHAN_A_LEFT &0x1F);
-
-///gpio_clear_pin_interrupt_flag(GPIO_CHAN_A_LEFT);
-}
 
 
 
 // initialize intc interupots  for video
+// SEt up the timer TCA1 and TCA2 counters to time the video events and interupt us when it is required to maintain
+// strict video timing.   We must finish the current video line and return BEFORE the next line interrupt occurs.
+//  This is inefficient in CPU cycles( interupt calls pop registers on and off the stack in quick sucession)  but guantees the timing.
+//
+//  Two timer setups  are GLOBAL structures settings that are copied to the tiemr registers to init the timers
+// this routine only uses tc1_settings and tc2_settings that are declaed global above.  To change the line or frame timing
+// you must modify these structures.
+
 static void init_intc_interrupts(void)
 {
 
@@ -728,6 +780,9 @@ U32 frame_time;
      x=sizeof(tile_memory[0]);
      y=sizeof(video_memory[0]);
 
+     init_color_bars();
+
+
      while(1)
        {
          for (x=1; x<2; x++)
@@ -735,7 +790,7 @@ U32 frame_time;
             while (line_number==1);
             while (line_number !=1);
           }
-         pong();
+     //    pong();
        }
 
      while(1)
@@ -776,7 +831,7 @@ U32 frame_time;
 }
 
 void pong()
-{  static int row=23;
+{  //static int row=23;
    static int col =1;
    static U8 save=1;
 
@@ -792,29 +847,30 @@ void pong()
 
 }
 
-// fill video memory array with 0 (black screen)
+// fil video memory array with 0 (black screen)
 void init_video_memory()
 { int tile_pos,x;
+// fill with green background
  for (tile_pos=0; tile_pos< NUM_TILES_X*NUM_TILES_Y; tile_pos++)
    video_memory[tile_pos]=5;
 
 // for (tile_pos=20; tile_pos< 40*30; tile_pos+=40)
  //   video_memory[tile_pos]=2;
 
- for (tile_pos=0; tile_pos< 40; tile_pos++)
+ for (tile_pos=0; tile_pos< NUM_TILES_X; tile_pos++)
      video_memory[tile_pos]=3;
 
 
- for (tile_pos=NUM_TILES_X*NUM_TILES_Y-40; tile_pos< NUM_TILES_X*NUM_TILES_Y; tile_pos++)
+ for (tile_pos=NUM_TILES_X*NUM_TILES_Y-NUM_TILES_X; tile_pos< NUM_TILES_X*NUM_TILES_Y; tile_pos++)
       video_memory[tile_pos]=1;
 
- for (tile_pos=0; tile_pos< NUM_TILES_X*NUM_TILES_Y; tile_pos+=40)
+ for (tile_pos=0; tile_pos< NUM_TILES_X*NUM_TILES_Y; tile_pos+=NUM_TILES_X)
        video_memory[tile_pos]=1;
 
 
- video_memory[15*40+20]=4;
- video_memory[19*40+19]=2;
- video_memory[20*40+19]=2;
+ video_memory[15*NUM_TILES_X+20]=4;
+ video_memory[19*NUM_TILES_X+19]=2;
+ video_memory[20*NUM_TILES_X+19]=2;
 
 
 
@@ -825,9 +881,9 @@ void init_video_memory()
  video_memory[6]=3;
  video_memory[7]=1;
 
- video_memory[29*40+0]=9;
- video_memory[28*40+1]=9;
- video_memory[27*40+2]=9;
+ video_memory[29*NUM_TILES_X+0]=9;
+ video_memory[28*NUM_TILES_X+1]=9;
+ video_memory[27*NUM_TILES_X+2]=9;
 
  for(x=0; x<NUM_SPRITES; x++)
   sprites[x].mode=invisible; /// all sprites inactive
@@ -874,4 +930,78 @@ void fill_sprite_buffer(pixel_row)
 
 }
 
+
+void init_color_bars()
+{ int tile_pos,col;
+// fill with 75% white background
+for (tile_pos=0; tile_pos< NUM_TILES_X*NUM_TILES_Y; tile_pos++)
+   video_memory[tile_pos]=0;
+
+// fill col 0 to col 40/8=4
+for (col=0;col<5;col++)
+	for (tile_pos=col; tile_pos< NUM_TILES_Y*NUM_TILES_X; tile_pos+=NUM_TILES_X)
+      video_memory[tile_pos]=10;
+
+// fill col 5 to col 40/8=4
+for (col=5;col<10;col++)
+	for (tile_pos=col; tile_pos< NUM_TILES_Y*NUM_TILES_X; tile_pos+=NUM_TILES_X)
+      video_memory[tile_pos]=11;
+
+// fill col 10 to col 15
+for (col=10;col<15;col++)
+	for (tile_pos=col; tile_pos< NUM_TILES_Y*NUM_TILES_X; tile_pos+=NUM_TILES_X)
+      video_memory[tile_pos]=12;
+
+// fill col 10 to col 15  green
+for (col=15;col<20;col++)
+	for (tile_pos=col; tile_pos< NUM_TILES_Y*NUM_TILES_X; tile_pos+=NUM_TILES_X)
+      video_memory[tile_pos]=13;
+
+// fill col 20 to col 25  Magenta
+for (col=20;col<25;col++)
+	for (tile_pos=col; tile_pos< NUM_TILES_Y*NUM_TILES_X; tile_pos+=NUM_TILES_X)
+      video_memory[tile_pos]=14;
+
+// fill col 10 to col 15  red
+for (col=25;col<30;col++)
+	for (tile_pos=col; tile_pos< NUM_TILES_Y*NUM_TILES_X; tile_pos+=NUM_TILES_X)
+      video_memory[tile_pos]=15;
+
+// fill col 10 to col 15  blue
+for (col=30;col<35;col++)
+	for (tile_pos=col; tile_pos< NUM_TILES_Y*NUM_TILES_X; tile_pos+=NUM_TILES_X)
+      video_memory[tile_pos]=16;
+
+
+//for (tile_pos=0; tile_pos< NUM_TILES_X*NUM_TILES_Y; tile_pos++)
+//   video_memory[tile_pos]=10;
+
+// for (tile_pos=20; tile_pos< 40*30; tile_pos+=40)
+ //   video_memory[tile_pos]=2;
+
+ // 75% white bar
+// for (tile_pos=0; tile_pos< NUM_TILES_X; tile_pos++)
+//     video_memory[tile_pos]=3;
+//
+//
+// for (tile_pos=NUM_TILES_X*NUM_TILES_Y-NUM_TILES_X; tile_pos< NUM_TILES_X*NUM_TILES_Y; tile_pos++)
+//      video_memory[tile_pos]=1;
+//
+// for (tile_pos=0; tile_pos< NUM_TILES_X*NUM_TILES_Y; tile_pos+=NUM_TILES_X)
+//       video_memory[tile_pos]=1;
+//
+//
+// video_memory[15*NUM_TILES_X+20]=4;
+// video_memory[19*NUM_TILES_X+19]=2;
+// video_memory[20*NUM_TILES_X+19]=2;
+//
+//
+//
+// video_memory[1]=2;
+// video_memory[3]=3;
+// video_memory[4]=1;
+// video_memory[5]=2;
+// video_memory[6]=3;
+// video_memory[7]=1;
+}
 

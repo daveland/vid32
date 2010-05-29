@@ -8,7 +8,10 @@
 #define _TILES_H_
 
 #include "compiler.h"
+// Choose your video mode Here.. Uncomment one of these lines
+#define VIDEOMODE1  //240X240 interlaced display with 8x8 tiles and Sprites
 
+#ifdef VIDEOMODE1  //240X240 interlaced display with 8x8 tiles and 32 8x8 Sprites
 
 #define HORIZONTAL_RES 320
 #define VERTICAL_RES 240
@@ -17,6 +20,8 @@
 #define NUM_TILES_X HORIZONTAL_RES/TILE_SIZE_X
 #define NUM_TILES_Y VERTICAL_RES/TILE_SIZE_Y
 #define NUM_SPRITES 32
+#endif
+
 
 enum spritemode {inactive,stop,running,manual,invisible};
 
