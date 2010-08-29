@@ -781,7 +781,13 @@ U32 frame_time;
      y=sizeof(video_memory[0]);
 
      init_color_bars();
-
+ // draw some char "A" on the screen
+  // to check video memory orgaization
+//     video_memory[20*NUM_TILES_X+18]=17;
+//     video_memory[20*NUM_TILES_X+34]=17;
+//     video_memory[10*NUM_TILES_X+10]=17;
+//     video_memory[10*NUM_TILES_X+11]=17;
+//     video_memory[10*NUM_TILES_X]=17;
 
      while(1)
        {

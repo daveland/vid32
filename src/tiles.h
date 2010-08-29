@@ -9,9 +9,9 @@
 
 #include "compiler.h"
 // Choose your video mode Here.. Uncomment one of these lines
-#define VIDEOMODE1  //240X240 interlaced display with 8x8 tiles and Sprites
+#define VIDEOMODE1  //320X240 interlaced display with 8x8 tiles and Sprites
 
-#ifdef VIDEOMODE1  //240X240 interlaced display with 8x8 tiles and 32 8x8 Sprites
+#ifdef VIDEOMODE1  //320X240 interlaced display with 8x8 tiles and 32 8x8 Sprites
 
 #define HORIZONTAL_RES 320
 #define VERTICAL_RES 240
@@ -45,6 +45,7 @@ struct sprite_object{
 
 extern U8 video_memory[NUM_TILES_X*NUM_TILES_Y];
 extern U16 tile_memory[];
+
 extern U16 sprite_video_buffer[NUM_TILES_X*TILE_SIZE_X];
 extern struct sprite_object sprites [ NUM_SPRITES ];
 extern U16 sprite_video_buffer[NUM_TILES_X*TILE_SIZE_X];

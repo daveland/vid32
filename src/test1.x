@@ -138,9 +138,17 @@ _line_data:
 
 
 
-.rept 30*10  // delay line beginning
+.rept 31*11  // delay line beginning
         nop
 .endr
+.rept 1
+		nop
+		nop
+		//nop
+		//nop
+		//nop
+.endr
+
          rcall send_video_line_indexed_32bit
 
         // USE OFFSET to ACCESS Output Value register
@@ -661,7 +669,7 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
                 andl     r6,0x07 // video line number..keep only lower 3 bits mask out others
                 lsl     r6,4  // multiply by 16 ( 2 bytes *8 pixels rows)
                 add     r12,r6  // this is the offset for r12
-	.rept 37   // 40 tile loop , 1 video line , 1 row in pixelmap, 9 clocks per pixel
+	.rept 35   // 40 tile loop , 1 video line , 1 row in pixelmap, 9 clocks per pixel
 	        ld.ub   r10,r11++[0]       //  get next tile number from video memory,  2 cycles
 	        lsl     r10,7                   // tiles are 128 =8*8*2 bytes long,
 	        ld.uh   r6,r12[R10] // HSB Access get pixel word for tile->   1 cycle + 1+1Wait =3 cycles
@@ -746,7 +754,7 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
 
 
 	// USE OFFSET to ACCESS Output Value register
-	mov  r6, 0x0FFF
+	mov  r6, 0x0000
 	orh      r6, 0x0000                                             // RGB=0,0,0
 	st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R6
 
@@ -788,7 +796,7 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
 	                andl     r6,0x07 // video line number..keep only lower 3 bits mask out others
 	                lsl     r6,4  // multiply by 16 ( 2 bytes *8 pixels rows)
 	                add     r12,r6  // this is the offset for r12
-	        .rept 36   // 40 tile loop , 1 video line , 1 row in pixelmap, 9 clocks per pixel
+	        .rept 35   // 40 tile loop , 1 video line , 1 row in pixelmap, 9 clocks per pixel
 	                ld.ub   r10,r11       //  1 cycles get next tile number from video memory,  2 cycles
 	                lsl     r10,7                   // tiles are 128 =8*8*2 bytes long,
 
@@ -882,7 +890,7 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
 
 
 	        // USE OFFSET to ACCESS Output Value register
-	        mov  r6, 0x0FFF
+	        mov  r6, 0x0000
 	        orh      r6, 0x0000                                             // RGB=0,0,0
 	        st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R6
 
@@ -911,6 +919,11 @@ st.h R0[AVR32_GPIO_LOCAL_OVR+0x100], R7
 
 
 
+
+// note:  32 bit access requires the tile maps to be stored in 32 bit order
+// big  endian so first 1/2 word in memory is the upper word then the second 1/2 word is the lower
+// word.  This saves rebdering time in the video processing routine.
+// bit this makes the tile maps for 16bit rendering incompatible with 32 bit rendered maps.
 
 
 	        // video line number in R8
